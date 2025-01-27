@@ -6,24 +6,31 @@ import { io } from 'socket.io-client';
 
 function App() {
   const [input, setInput] = useState("");
-  const [message, setMessage] = useState([]);
-  const [isToggle, setIsToggle] = useState(false);
+  const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     const socketInstance = io('http://localhost:4000');
     setSocket(socketInstance);
-    socketInstance.on('message', (data) => {
-      setMessage(prevMessage => [...prevMessage, data]);
+
+    socketInstance.on('initialMessages', (data) => {
+      // console.log(data, 'data');
+      setMessages(data);
+    })
+    socketInstance.on('messageResponse', (data) => {
+      // console.log(data, 'data');
+      setMessages(data);
     })
 
     return () => {
       socketInstance.disconnect();
     }
-  }, [])
+  }, []);
+
   const handleSubmit = () => {
     if (socket && input.trim()) {
       socket.emit('message', {
+
         id: Date.now(),
         text: input,
         completed: false,
@@ -32,26 +39,19 @@ function App() {
       });
       setInput('');
     }
+    // console.log(messages, 'message');
   }
-  const handleToggle = (item) => {
-    console.log(item, 'item');
-    const updateMessage = message.map((messageItem) => {
-      if (messageItem.id === item.id) {
-        console.log(messageItem.id === item.id, 'messageItem.id === item.id');
-        return {
-          ...messageItem,
-          completed: !messageItem.completed,
-        };
-      }
-      return messageItem;
-    })
-    setMessage(updateMessage);
+
+  const handleToggle = (id) => {
+    // console.log(id, "toggle id")
+    socket.emit('toggleMessage', id);
+    // console.log(messages, "message toggle")
   }
 
   const handleDelete = (id) => {
-    const updatedMessage = message.filter((item) => item.id !== id);
-    setMessage(updatedMessage);
+    socket.emit('deleteMessage', id);
   }
+
   return (
     <div className="App">
       <header className="App-header">
@@ -64,10 +64,10 @@ function App() {
           Send
         </button>
         <div>
-          {message.map((item, index) => (
+          {messages.map((item, index) => (
             <p key={index}>{item.text}
               <button onClick={() => handleDelete(item.id)}> Remove </button>
-              <button onClick={() => handleToggle(item)}> {item.completed ? 'Completed' : 'Uncomplete'} </button>
+              <button onClick={() => handleToggle(item.id)}> {item.completed ? 'Completed' : 'Incomplete'} </button>
             </p>
           ))}
         </div>
